@@ -8,8 +8,6 @@ from pathlib import Path
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# Lockfile reading C:\Users\james\AppData\Local\Riot Games\Riot Client\Config
-
 class LockfileHandler:
     def __init__(self):
         self.access_token = []

@@ -16,5 +16,10 @@ class LeaderboardPUUIDsRetriever:
         for player in leaderboard["Players"]:
             self.puuids.append(player["puuid"])
 
+        print("Saving data to puuid_data.json...")
+        with open("puuid_data.json", "w", encoding="utf-8") as f:
+            json.dump(self.puuids, f, indent=2)
+        print("Done.")
+
 
 

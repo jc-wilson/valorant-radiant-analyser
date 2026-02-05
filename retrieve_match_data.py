@@ -62,7 +62,7 @@ class RetrieveMatchData:
             print(f"Fetching match history for {len(puuids)} players...")
             history_tasks = []
             for puuid in puuids:
-                url = f"https://pd.eu.a.pvp.net/match-history/v1/history/{puuid}?startIndex=0&endIndex=15&queue=competitive"
+                url = f"https://pd.eu.a.pvp.net/match-history/v1/history/{puuid}?startIndex=0&endIndex=20&queue=competitive"
                 history_tasks.append(fetch_with_retry(session, url))
 
             history_results = await asyncio.gather(*history_tasks)
@@ -85,7 +85,6 @@ class RetrieveMatchData:
             if match_tasks:
                 match_results = await asyncio.gather(*match_tasks)
 
-                # Store successful results
                 for match_id, result in zip(matches_to_fetch, match_results):
                     if result:
                         self.match_data.append(result)

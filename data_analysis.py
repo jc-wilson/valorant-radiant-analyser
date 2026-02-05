@@ -1,6 +1,6 @@
 from retrieve_match_data import RetrieveMatchData
 from leaderboard_puuids_retriever import LeaderboardPUUIDsRetriever
-from utils import UUIDHandler, TimeHandler
+from utils import UUIDHandler, TimeHandler, RoundingHandler
 from collections import Counter
 
 import json
@@ -36,10 +36,15 @@ class DataAnalysis:
         self.least_kd = 0
         self.average_kd = 0
         self.most_acs = 0
+        self.most_acs_rounded = 0
         self.least_acs = 0
         self.average_acs = 0
+        self.least_rounds = 0
+        self.average_rounds = 0
+        self.most_rounds = 0
         self.unique_matches = 0
         self.match_times = []
+        self.acs_list_rounded = []
         self.server_count = {
             'Frankfurt': 0,
             'London': 0,
@@ -52,11 +57,17 @@ class DataAnalysis:
         }
         self.agent_count = {
             'Astra': 0, 'Fade': 0, 'Brimstone': 0, 'Gekko': 0, 'Iso': 0,
-            'Waylay': 0, 'Harbor': 0, 'Veto': 0, 'Sage': 0, 'KAY/O': 0,
+            'Waylay': 0, 'Harbor': 0, 'Veto': 0, 'Sage': 0, 'KAY_O': 0,
             'Raze': 0, 'Neon': 0, 'Deadlock': 0, 'Phoenix': 0, 'Vyse': 0,
             'Omen': 0, 'Yoru': 0, 'Breach': 0, 'Viper': 0, 'Reyna': 0,
             'Jett': 0, 'Skye': 0, 'Chamber': 0, 'Cypher': 0, 'Sova': 0,
             'Clove': 0, 'Killjoy': 0, 'Tejo': 0
+        }
+        self.role_count = {
+            'Controller': 0,
+            'Sentinel': 0,
+            'Initiator': 0,
+            'Duelist': 0
         }
         self.party_size = {
             'Solo': 0,
@@ -107,9 +118,6 @@ class DataAnalysis:
         handler = RetrieveMatchData()
         handler.retrieve_matches()
 
-        puuid_handler = LeaderboardPUUIDsRetriever()
-        puuid_handler.retrieve_puuids()
-
         uuid_handler = UUIDHandler()
         uuid_handler.agent_uuid_function()
         uuid_handler.weapon_uuid_function()
@@ -117,14 +125,19 @@ class DataAnalysis:
 
         time_handler = TimeHandler()
 
+        rounding_handler = RoundingHandler()
+
         with open("match_data.json") as a:
             self.match_data = json.load(a)
+
+        with open("puuid_data.json") as a:
+            self.puuid_data = json.load(a)
 
         self.unique_matches = len(self.match_data)
         print(f"Unique matches: {self.unique_matches}")
 
         def server_func():
-            for puuid in puuid_handler.puuids:
+            for puuid in self.puuid_data:
                 for match in self.match_data:
                     for player in match["players"]:
                         if player["subject"] == puuid:
@@ -136,14 +149,14 @@ class DataAnalysis:
             print(self.server_count)
 
         def match_time_length_func():
-            for puuid in puuid_handler.puuids:
+            for puuid in self.puuid_data:
                 for match in self.match_data:
                     for player in match["players"]:
                         if player["subject"] == puuid:
                             self.match_length_data.append(int(round(time_handler.ms_to_minutes(match["matchInfo"]["gameLengthMillis"]), 0)))
                             self.match_times.append(time_handler.ms_to_24hr(match["matchInfo"]["gameStartMillis"]))
 
-            self.average_match_length = f"{round(sum(self.match_length_data) / len(self.match_length_data), 2)} minutes"
+            self.average_match_length = round(sum(self.match_length_data) / len(self.match_length_data), 2)
 
             print(self.match_times)
             print(f"average match: {self.average_match_length}")
@@ -163,7 +176,7 @@ class DataAnalysis:
             print(f"shortest match: {self.shortest_match} minutes")
 
         def kda_acs_func():
-            for puuid in puuid_handler.puuids:
+            for puuid in self.puuid_data:
                 for match in self.match_data:
                     for player in match["players"]:
                         if player["subject"] == puuid:
@@ -172,7 +185,7 @@ class DataAnalysis:
                                 'deaths': player["stats"]["deaths"],
                                 'assists': player["stats"]["assists"],
                                 'score': player["stats"]["score"],
-                                'rounds_played': player["stats"]["roundsPlayed"]
+                                'rounds_played': match["teams"][0]["roundsPlayed"]
                             })
 
             most_kills = 0
@@ -181,6 +194,10 @@ class DataAnalysis:
             least_deaths = 99
             most_assists = 0
             least_assists = 99
+            most_rounds = 0
+            least_rounds = 99
+            most_acs_rounded = 0
+            least_acs_rounded = 999
 
             for statline in self.kda_acs:
                 self.total_kills += statline['kills']
@@ -193,6 +210,7 @@ class DataAnalysis:
                 self.death_list.append(statline['deaths'])
                 self.assist_list.append(statline['assists'])
                 self.acs_list.append(statline['score'] / statline['rounds_played'])
+                self.acs_list_rounded.append(rounding_handler.round_acs(statline['score'] / statline['rounds_played']))
                 self.rounds_played_list.append(statline['rounds_played'])
 
                 if statline['kills'] > most_kills:
@@ -207,6 +225,12 @@ class DataAnalysis:
                     most_assists = statline['assists']
                 if statline['assists'] < least_assists:
                     least_assists = statline['assists']
+                if statline['rounds_played'] > most_rounds:
+                    most_rounds = statline['rounds_played']
+                if statline['rounds_played'] < least_rounds:
+                    least_rounds = statline['rounds_played']
+                if rounding_handler.round_acs(statline['score'] / statline['rounds_played']) > most_acs_rounded:
+                    most_acs_rounded = rounding_handler.round_acs(statline['score'] / statline['rounds_played'])
 
             self.most_kills = most_kills
             self.least_kills = least_kills
@@ -214,12 +238,16 @@ class DataAnalysis:
             self.least_deaths = least_deaths
             self.most_assists = most_assists
             self.least_assists = least_assists
+            self.most_rounds = most_rounds
+            self.least_rounds = least_rounds
+            self.most_acs_rounded = most_acs_rounded
 
 
 
             self.average_kills = self.total_kills / len(self.kda_acs)
             self.average_deaths = self.total_deaths / len(self.kda_acs)
             self.average_assists = self.total_assists / len(self.kda_acs)
+            self.average_rounds = self.total_rounds_played / len(self.kda_acs)
             self.average_kd = self.total_kills / self.total_deaths
             self.average_acs = self.total_score / self.total_rounds_played
 
@@ -237,17 +265,23 @@ class DataAnalysis:
             print("--------------------------------------")
             print(f"average k/d: {round(self.average_kd, 2)}")
             print(f"average acs: {round(self.average_acs, 0)}")
+            print(f"average rounds: {round(self.average_rounds, 0)}")
 
         def agent_func():
-            for puuid in puuid_handler.puuids:
+            for puuid in self.puuid_data:
                 for match in self.match_data:
                     for player in match["players"]:
                         if player["subject"] == puuid:
-                            self.agent_count[uuid_handler.agent_converter(player["characterId"])] += 1
+                            if uuid_handler.agent_converter(player["characterId"]) == "KAY/O":
+                                self.agent_count["KAY_O"] += 1
+                                self.role_count["Initiator"] += 1
+                            else:
+                                self.agent_count[uuid_handler.agent_converter(player["characterId"])] += 1
+                                self.role_count[uuid_handler.agent_role(player["characterId"])] += 1
             print(self.agent_count)
 
         def party_func():
-            for puuid in puuid_handler.puuids:
+            for puuid in self.puuid_data:
                 for match in self.match_data:
                     for player in match["players"]:
                         if player["subject"] == puuid:
@@ -259,7 +293,7 @@ class DataAnalysis:
             print(self.party_size)
 
         def loadout_func():
-            for puuid in puuid_handler.puuids:
+            for puuid in self.puuid_data:
                 for match in self.match_data:
                     for player in match["players"]:
                         if player["subject"] == puuid:

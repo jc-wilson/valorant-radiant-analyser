@@ -1,6 +1,7 @@
 from datetime import datetime
 import requests
 import json
+import math
 
 class UUIDHandler:
     def agent_uuid_function(self):
@@ -50,6 +51,14 @@ class UUIDHandler:
                 return result
         return result
 
+    def agent_role(self, uuid):
+        result = None
+        for agent in self.agent_uuids["data"]:
+            if agent["uuid"] == uuid.lower():
+                result = agent["role"]["displayName"]
+                return result
+        return result
+
     def armor_converter(self, uuid):
         result = None
         for armor in self.armor_uuids["data"]:
@@ -68,4 +77,10 @@ class TimeHandler:
     def ms_to_minutes(self, ms):
         result = None
         result = ms / 1000 / 60
+        return result
+
+class RoundingHandler:
+    def round_acs(self, acs):
+        result = None
+        result = int(math.floor(acs / 20)) * 20
         return result
