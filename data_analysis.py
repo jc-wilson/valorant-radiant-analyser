@@ -95,6 +95,28 @@ class DataAnalysis:
             "Odin": 0,
             "Knife": 0
         }
+        self.weapon_kill_count = {
+            "Classic": 0,
+            "Bandit": 0,
+            "Shorty": 0,
+            "Frenzy": 0,
+            "Ghost": 0,
+            "Sheriff": 0,
+            "Stinger": 0,
+            "Spectre": 0,
+            "Bucky": 0,
+            "Judge": 0,
+            "Bulldog": 0,
+            "Guardian": 0,
+            "Phantom": 0,
+            "Vandal": 0,
+            "Marshal": 0,
+            "Outlaw": 0,
+            "Operator": 0,
+            "Ares": 0,
+            "Odin": 0,
+            "Knife": 0
+        }
         self.armor_choice = {
             "No Armor": 0,
             "Light Armor": 0,
@@ -115,8 +137,8 @@ class DataAnalysis:
         }
 
     def data_analysis(self):
-        handler = RetrieveMatchData()
-        handler.retrieve_matches()
+        # handler = RetrieveMatchData()
+        # handler.retrieve_matches()
 
         uuid_handler = UUIDHandler()
         uuid_handler.agent_uuid_function()
@@ -146,7 +168,6 @@ class DataAnalysis:
             for server in self.server_data:
                 self.server_count[server[29:-2].capitalize()] += 1
 
-            print(self.server_count)
 
         def match_time_length_func():
             for puuid in self.puuid_data:
@@ -156,9 +177,8 @@ class DataAnalysis:
                             self.match_length_data.append(int(round(time_handler.ms_to_minutes(match["matchInfo"]["gameLengthMillis"]), 0)))
                             self.match_times.append(time_handler.ms_to_24hr(match["matchInfo"]["gameStartMillis"]))
 
-            self.average_match_length = round(sum(self.match_length_data) / len(self.match_length_data), 2)
+            self.average_match_length = sum(self.match_length_data) / len(self.match_length_data)
 
-            print(self.match_times)
             print(f"average match: {self.average_match_length}")
 
             longest_match = 0
@@ -313,6 +333,17 @@ class DataAnalysis:
                                                 self.pistol_round_choice[uuid_handler.weapon_converter(players["economy"]["weapon"])] += 1
                                         except KeyError:
                                             continue
+
+                                        for kill in players["kills"]:
+                                            if kill["finishingDamage"]["damageType"] == "Melee":
+                                                self.weapon_kill_count["Knife"] += 1
+                                            elif kill["finishingDamage"]["damageType"] == "Weapon":
+                                                try:
+                                                    self.weapon_kill_count[uuid_handler.weapon_converter(kill["finishingDamage"]["damageItem"])] += 1
+                                                except KeyError:
+                                                    continue
+
+
             print(self.weapon_choice)
             print(sum(self.pistol_round_choice.values()))
             self.vandal_phantom["Vandal"] = self.weapon_choice["Vandal"]
@@ -329,3 +360,6 @@ class DataAnalysis:
         party_func()
         print("--------------------------------------")
         loadout_func()
+
+        print(sum(self.server_count.values()))
+        print(sum(self.agent_count.values()))

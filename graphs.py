@@ -38,10 +38,10 @@ def time_histogram_func():
     try:
         hours = [int(time_str[:2]) for time_str in match_times]
         for index, hour in enumerate(hours):
-            if hours[index] == 23:
-                hours[index] = 0
+            if hours[index] <= 5:
+                hours[index] += 18
             else:
-                hours[index] += 1
+                hours[index] -= 6
     except ValueError:
         print("Error: Ensure your data is a list of strings (e.g., '14:30')")
         hours = []
@@ -52,7 +52,7 @@ def time_histogram_func():
 
         ax.hist(hours, bins=range(0, 25), color=ACCENT_COLOR, edgecolor=BG_COLOR, alpha=1.0, align='left')
         ax.set_title("Distribution of Matches by Hour of Day", fontsize=18, fontweight='bold', pad=20, color='white')
-        ax.set_xlabel("Hour of Day (CET)", fontsize=12, labelpad=10)
+        ax.set_xlabel("Hour of Day (CST)", fontsize=12, labelpad=10)
         ax.set_ylabel("Number of Matches", fontsize=12, labelpad=10)
         ax.set_xticks(range(0, 24))
 
@@ -64,12 +64,20 @@ def histogram_func(data, range_low, range_high, title, xlabel, ylabel, step=1):
     fig, ax = plt.subplots(figsize=(12, 7))
     apply_theme(fig, ax)
 
-    ax.hist(data, bins=range(range_low, (range_high + step + 1), step), color=ACCENT_COLOR, edgecolor=BG_COLOR, alpha=1.0,
+    weights = np.ones_like(data) / len(data) * 100
+
+    ax.hist(data, bins=range(range_low, (range_high + step + 1), step),
+            weights=weights,
+            color=ACCENT_COLOR, edgecolor=BG_COLOR, alpha=1.0,
             align='mid' if step > 1 else 'left')
+
     ax.set_title(title, fontsize=18, fontweight='bold', pad=20, color='white')
     ax.set_xlabel(xlabel, fontsize=12, labelpad=10)
     ax.set_ylabel(ylabel, fontsize=12, labelpad=10)
     ax.set_xticks(range(range_low, (range_high + step + 1), step))
+
+    from matplotlib.ticker import PercentFormatter
+    ax.yaxis.set_major_formatter(PercentFormatter(xmax=100))
 
     plt.tight_layout()
     plt.show()
@@ -146,6 +154,9 @@ def create_pie_with_other(data_dict, title, cutoff_percentage=2, image_folder=No
 
 def create_bar_with_other(data_dict, title, cutoff_percentage=2, image_folder=None):
     total_sum = sum(data_dict.values())
+    if total_sum == 0:
+        return
+
     threshold = total_sum * (cutoff_percentage / 100.0)
     plot_data = {}
     other_total = 0
@@ -157,11 +168,11 @@ def create_bar_with_other(data_dict, title, cutoff_percentage=2, image_folder=No
 
     sorted_items = sorted(plot_data.items(), key=lambda x: x[1], reverse=True)
     labels = [item[0] for item in sorted_items]
-    values = [item[1] for item in sorted_items]
+    values = [(item[1] / total_sum) * 100 for item in sorted_items]
 
     if other_total > 0:
         labels.append(f"Other (< {cutoff_percentage}%)")
-        values.append(other_total)
+        values.append((other_total / total_sum) * 100)
 
     fig, ax = plt.subplots(figsize=(14, 8))
     apply_theme(fig, ax)
@@ -169,11 +180,11 @@ def create_bar_with_other(data_dict, title, cutoff_percentage=2, image_folder=No
     bars = ax.bar(labels, values, color=ACCENT_COLOR, edgecolor=BG_COLOR, alpha=1.0, width=0.7)
 
     ax.set_title(title, fontsize=18, fontweight='bold', pad=30, color='white')
-    ax.set_ylabel("Count", fontsize=12, labelpad=10)
+    ax.set_ylabel("Percentage (%)", fontsize=12, labelpad=10)
 
     for bar in bars:
         height = bar.get_height()
-        ax.annotate(f'{height}',
+        ax.annotate(f'{height:.1f}%',
                     xy=(bar.get_x() + bar.get_width() / 2, height),
                     xytext=(0, 5),
                     textcoords="offset points",
@@ -212,6 +223,8 @@ def create_bar_with_other(data_dict, title, cutoff_percentage=2, image_folder=No
     plt.tight_layout()
     plt.show()
 
+
+create_bar_with_other(handler.weapon_kill_count, "Weapon Kill Distribution", 1, image_folder="assets/weapons")
 
 histogram_func(handler.assist_list, 0, handler.most_assists,
                f"Distribution of Assists per Match (Average: {round(handler.average_assists, 1)})", "Assists per Match", "Number of Matches")
